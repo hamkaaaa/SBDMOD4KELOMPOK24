@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Library - Peminjaman</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            max-width: 300px;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input, button {
+            padding: 8px;
+        }
+        /* Styling teks notifikasi sesuai permintaan soal */
+        .sukses {
+            color: green;
+            font-weight: bold;
+        }
+        .gagal {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Daftar Koleksi Buku</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Judul Buku</th>
+                <th>Nama Penulis</th>
+                <th>Kategori</th>
+                <th>Sisa Stok</th>
+            </tr>
+        </thead>
+        <tbody id="tabel-buku">
+            </tbody>
+    </table>
+
+    <h2>Pinjam Buku</h2>
+    <form id="form-pinjam">
+        <input type="text" id="bookId" placeholder="Masukkan ID Buku" required>
+        <input type="text" id="memberId" placeholder="Masukkan ID Member" required>
+        <button type="submit">Pinjam</button>
+    </form>
+    
+    <div id="pesan-notifikasi"></div>
+
+    <script>
+        // Fungsi untuk mengambil dan menampilkan data buku (GET /api/books)
+        async function fetchBooks() {
+            try {
+                const response = await fetch('http://localhost:3000/api/books');
+                const books = await response.json();
+                
+                const tableBody = document.getElementById('tabel-buku');
+                tableBody.innerHTML = ''; // Bersihkan tabel sebelum diisi ulang
+
+                books.forEach(book => {
+                    const row = `
+                        <tr>
+                            <td>${book.title}</td>
+                            <td>${book.author_name}</td>
+                            <td>${book.category_name}</td>
+                            <td>${book.available_copies}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Gagal memuat data buku:', error);
+            }
+        }
+
+        // Fungsi untuk menangani form peminjaman (POST /api/loans)
+        document.getElementById('form-pinjam').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Mencegah reload halaman
+
+            const book_id = document.getElementById('bookId').value;
+            const member_id = document.getElementById('memberId').value;
+            const pesanDiv = document.getElementById('pesan-notifikasi');
+
+            // Generate otomatis due_date (misal: 7 hari dari sekarang) karena backend membutuhkannya
+            const date = new Date();
+            date.setDate(date.getDate() + 7);
+            const due_date = date.toISOString().split('T')[0];
+
+            try {
+                const response = await fetch('http://localhost:3000/api/loans', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        book_id: book_id,
+                        member_id: member_id,
+                        due_date: due_date
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Jika sukses (status 201), teks warna hijau
+                    pesanDiv.textContent = "Buku berhasil dipinjam!";
+                    pesanDiv.className = "sukses";
+                    
+                    // Kosongkan form dan refresh tabel agar stok langsung berkurang
+                    document.getElementById('form-pinjam').reset();
+                    fetchBooks();
+                } else {
+                    // Jika gagal (status 400 dll), teks warna merah sesuai pesan dari backend
+                    pesanDiv.textContent = result.error || "Gagal meminjam buku.";
+                    pesanDiv.className = "gagal";
+                }
+            } catch (error) {
+                pesanDiv.textContent = "Terjadi kesalahan pada server.";
+                pesanDiv.className = "gagal";
+            }
+        });
+
+        // Jalankan fungsi memuat buku saat halaman pertama kali dibuka
+        fetchBooks();
+    </script>
+</body>
+</html>
