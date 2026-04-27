@@ -1,7 +1,6 @@
 import { pool } from '../config/db.js';
 
 export const BookModel = {
-  // Ditambahkan parameter 'title' untuk fitur pencarian
   async getAll(title) {
     let query = `
       SELECT b.*, a.name as author_name, c.name as category_name 
@@ -32,7 +31,6 @@ export const BookModel = {
   },
   async update(id, data) {
     const { title, total_copies } = data;
-    // Asumsi update sederhana pada judul dan total_copies
     const query = 'UPDATE books SET title = $1, total_copies = $2 WHERE id = $3 RETURNING *';
     const result = await pool.query(query, [title, total_copies, id]);
     return result.rows[0];
